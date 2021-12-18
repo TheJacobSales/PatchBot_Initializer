@@ -1,0 +1,58 @@
+import requests
+import os
+import json
+import base64
+
+from requests.api import get
+
+def authEncrypt(jamfAuthCerts):
+    jamfAuthCertsEncode = jamfAuthCerts.encode("ascii")
+    base64_bytes = base64.b64encode(jamfAuthCertsEncode)
+    base64_string = base64_bytes.decode("ascii")
+    return base64_string
+
+def jamfCerts(jamfAuthCerts):
+    encodedCerts = authEncrypt(jamfAuthCerts)
+    return {"jamfClassic": encodedCerts,
+        "jamfProToken": "xxxxxxxxxx"}
+
+def main():
+    with open('config.json') as inFile:
+        configData = json.load(inFile)
+
+    requestToken = jamfCerts(configData["jamfCerts"])
+
+    jamfUrl = "https://casper.ts.fresnostate.edu"
+    getHeader = {
+            'Authorization': f'Basic {requestToken["jamfClassic"]}',
+            'Accept': 'application/json'
+    }
+    allPoliciesURL = f"{jamfUrl}/JSSResource/policies"
+
+    appName = input("Please enter in the application name for used in for the policy created(Eg. GoogleDrive, Google Chrome): ")
+    appName = str(appName)
+
+    responce = requests.get(url=allPoliciesURL, headers=getHeader)
+    policyList = responce.json()
+    policyNameInstall = f"Install Latest {appName}"
+    policyNameTEST = f"TEST-{appName}"
+    foundPolicy = False
+    for policy in policyList["policies"]:
+        if policyNameInstall == policy["name"]:
+            policyID = policy["id"]
+            print(f"Found {policyNameInstall} with policy ID of {policyID}")
+            foundPolicy = True
+            break
+        elif policyNameTEST == policy["name"]:
+            policyID = policy["id"]
+            print(f"Found {policyNameTEST} with policy ID of {policyID}")
+            foundPolicy = True
+            break
+    if foundPolicy == False:
+        print(f"Cound not find policy with names: {policyNameInstall} or {policyNameTEST}")
+        raise SystemExit
+
+    policyIDURL = f"{jamfUrl}/JSSResource/policies/id/{policyID}"
+
+if __name__ == "__main__":
+    main()
