@@ -17,6 +17,7 @@ def jamfCerts(jamfAuthCerts):
         "jamfProToken": "xxxxxxxxxx"}
 
 def main():
+    #----------------------- Header Setup -------------------------
     with open('config.json') as inFile:
         configData = json.load(inFile)
 
@@ -29,7 +30,8 @@ def main():
     }
     allPoliciesURL = f"{jamfUrl}/JSSResource/policies"
 
-    appName = input("Please enter in the application name for used in for the policy created(Eg. GoogleDrive, Google Chrome): ")
+    #----------------------- Check if Policy was created -------------------------
+    appName = input("Please enter in the application name used by the policy created(Eg. GoogleDrive, Google Chrome): ")
     appName = str(appName)
 
     responce = requests.get(url=allPoliciesURL, headers=getHeader)
@@ -49,10 +51,44 @@ def main():
             foundPolicy = True
             break
     if foundPolicy == False:
-        print(f"Cound not find policy with names: {policyNameInstall} or {policyNameTEST}")
+        print(f"Cound not find policy with names: {policyNameInstall} or {policyNameTEST}\nPolicy probably not created.")
         raise SystemExit
 
+    #----------------------- Check of Patch was Created -------------------------
     policyIDURL = f"{jamfUrl}/JSSResource/policies/id/{policyID}"
+
+    patchName = input("Please enter in the patch name used in the patch created(Eg. GoogleDrive, Google Chrome): ")
+    patchName = str(patchName)
+
+    allPatchesURL = f"{jamfUrl}/JSSResource/patchsoftwaretitles"
+    responce = requests.get(url=allPatchesURL, headers=getHeader)
+    softwareTitles = responce.json()
+    foundPatch = False
+
+    for patch in softwareTitles["patch_software_titles"]:
+        if patchName == patch["name"]:
+            patchID = patch["id"]
+            print(f"Found {patchName} with patch ID of {patchID}")
+            foundPatch = True
+            break
+    if foundPatch == False:
+        print(f"Cound not find patch with name: {patchName}\nPlease create the patch or confirm it's correct name before retrying script")
+        raise SystemExit
+    
+    #----------------------- Find Name of the Package -------------------------
+    pkgName = input("Please enter in the name of the package used in the patch created(Eg. GoogleDrive, Opera): ")
+    pkgName = str(patchName)
+
+    #----------------------- Create Patch Policy Test and Stable ----------------
+    patchPoliciesURL = f"{jamfUrl}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
+    print(patchPoliciesURL)
+    response = requests.get(url=patchPoliciesURL, headers=getHeader)
+    patchPolicies = response.json()
+    print(patchPolicies)
+
+    response = requests.post(url=patchPoliciesURL, headers=getHeader)
+
+    
 
 if __name__ == "__main__":
     main()

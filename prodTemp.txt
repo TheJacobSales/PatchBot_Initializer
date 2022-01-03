@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Description</key>
+		<string>Move Edit package from testing to production</string>
+		<key>Identifier</key>
+		<string>local.prod.Opera.FSLead</string>
+		<key>Input</key>
+		<dict>
+			<key>package</key>
+			<string>Edit</string>
+		</dict>
+		<key>MinimumVersion</key>
+		<string>0.0.0</string>
+		<key>Process</key>
+		<array>
+			<dict>
+				<key>Arguments</key>
+				<dict>
+					<key>package</key>
+					<string>Edit</string>
+					<key>patch</key>
+					<string>Edit</string>
+					<key>delta</key>
+					<integer>7</integer>
+				</dict>
+				<key>Processor</key>
+				<string>com.honestpuck.PatchBot/Production</string>
+			</dict>
+		</array>
+	</dict>
+</plist>
