@@ -2,6 +2,8 @@ import requests
 import os
 import json
 import base64
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 from requests.api import get
 
@@ -15,6 +17,10 @@ def jamfCerts(jamfAuthCerts):
     encodedCerts = authEncrypt(jamfAuthCerts)
     return {"jamfClassic": encodedCerts,
         "jamfProToken": "xxxxxxxxxx"}
+
+def makePatchPolicy():
+    #Create a Patch Policy asociated to the patch ID
+    return
 
 def main():
     #----------------------- Header Setup -------------------------
@@ -86,9 +92,54 @@ def main():
     patchPolicies = response.json()
     print(patchPolicies)
 
-    response = requests.post(url=patchPoliciesURL, headers=getHeader)
-
+    # response = requests.post(url=patchPoliciesURL, headers=getHeader)
+    testExist = False
+    stableExist = False
+    for policy in patchPolicies['patch policies']:
+        if policy['name'] == f"{patchName} Test":
+            #Test Policy Exists
+            testExist = True
+        elif policy['name'] == f"{patchName} Stable":
+            #Stable Policy Exists
+            stableExist = True
     
+    if testExist != True:
+        print("Creating Test Policy")
+        makePatchPolicy()
+    if stableExist != True:
+        print("Creating Stable Policy")
+        makePatchPolicy()
+    
+    #----------------------- Create Parent Patch and Parent Prod Recipe----------------
+    tree = ET.parse('patchTemp.xml')
+    root = tree.getroot()
+    ### Edit XML Here
+    root[0][1].text = f"Move {appName} package into testing"
+    root[0][3].text = f"local.ptch.{appName}.FSLead"
+    root[0][9][0][1][1].text = f"Install Latest {appName}"
+    root[0][9][0][1][3].text = f"{patchName}"
+    root[0][9][0][1][5].text = f"{pkgName}"
+    root[0][9][0][1][7].text = f"Install Latest {appName}"
+    root[0][9][0][1][9].text = f"-1"
+
+    with open('FSLead.Opera.ptch.recipe', 'wb') as f:
+        f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
+        tree.write(f, encoding='utf-8')
+
+    tree = ET.parse('prodTemp.xml')
+    root = tree.getroot()
+    ### Edit XML Here
+    root[0][1].text = f"Move {appName} package from testing to production"
+    root[0][3].text = f"local.ptch.{appName}.FSLead"
+    root[0][5][1].text = f"{pkgName}"
+    root[0][9][0][1][1].text = f"{pkgName}"
+    root[0][9][0][1][3].text = f"{patchName}"
+    root[0][9][0][1][5].text = f"7"
+    # print(root[0][1].text)
+    with open('FSLead.Opera.prod.recipe', 'wb') as f:
+        f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
+        tree.write(f, encoding='utf-8')
+    #----------------------- Create Create Overides ----------------    
 
 if __name__ == "__main__":
     main()

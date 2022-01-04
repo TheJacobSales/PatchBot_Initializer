@@ -7,7 +7,7 @@
 		<key>Identifier</key>
 		<string>local.ptch.Edit.FSLead</string>
 		<key>Input</key>
-		<dict></dict>
+		<dict> </dict>
 		<key>MinimumVersion</key>
 		<string>1.0.0</string>
 		<key>Process</key>
