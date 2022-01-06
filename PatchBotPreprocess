@@ -18,8 +18,23 @@ def jamfCerts(jamfAuthCerts):
     return {"jamfClassic": encodedCerts,
         "jamfProToken": "xxxxxxxxxx"}
 
-def makePatchPolicy():
+def makePatchPolicy(appName, patchName,patchID, jamfURL, headers):
     #Create a Patch Policy asociated to the patch ID
+    tree = ET.parse('patchPolicy.xml')
+    root = tree.getroot()
+    ### Edit XML Here
+    root[0][0].text = f"{patchName}"
+    root[2][1].text = f"Update {appName}"
+    root[2][2][2].text = f"{appName} Update Available"
+    root[2][2][3].text = f"{patchName}"
+    root[3].text = f"{patchID}" 
+
+    ###
+    xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+    print(xmlstr)
+    postURL = f"{jamfURL}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
+    response = requests.post(url=postURL, headers=headers, data=xmlstr)
+    print(f"{patchName} policy finished with status: {response.status_code}")
     return
 
 def main():
@@ -83,7 +98,7 @@ def main():
     
     #----------------------- Find Name of the Package -------------------------
     pkgName = input("Please enter in the name of the package used in the patch created(Eg. GoogleDrive, Opera): ")
-    pkgName = str(patchName)
+    pkgName = str(pkgName)
 
     #----------------------- Create Patch Policy Test and Stable ----------------
     patchPoliciesURL = f"{jamfUrl}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
@@ -105,10 +120,10 @@ def main():
     
     if testExist != True:
         print("Creating Test Policy")
-        makePatchPolicy()
+        makePatchPolicy(appName=appName, patchName=f"{patchName} Test", patchID=patchID, jamfURL=jamfUrl, headers=getHeader)
     if stableExist != True:
         print("Creating Stable Policy")
-        makePatchPolicy()
+        makePatchPolicy(appName=appName, patchName=f"{patchName} Stable", patchID=patchID, jamfURL=jamfUrl, headers=getHeader)
     
     #----------------------- Create Parent Patch and Parent Prod Recipe----------------
     tree = ET.parse('patchTemp.xml')
@@ -122,7 +137,7 @@ def main():
     root[0][9][0][1][7].text = f"Install Latest {appName}"
     root[0][9][0][1][9].text = f"-1"
 
-    with open('FSLead.Opera.ptch.recipe', 'wb') as f:
+    with open(f'FSLead.{pkgName}.ptch.recipe', 'wb') as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
         tree.write(f, encoding='utf-8')
 
@@ -135,8 +150,8 @@ def main():
     root[0][9][0][1][1].text = f"{pkgName}"
     root[0][9][0][1][3].text = f"{patchName}"
     root[0][9][0][1][5].text = f"7"
-    # print(root[0][1].text)
-    with open('FSLead.Opera.prod.recipe', 'wb') as f:
+
+    with open(f'FSLead.{pkgName}.prod.recipe', 'wb') as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
         tree.write(f, encoding='utf-8')
     #----------------------- Create Create Overides ----------------    

@@ -2,7 +2,6 @@
     <general>
         <name>Edit</name>
         <enabled>true</enabled>
-        <target_version>66.0.3359.117</target_version>
         <distribution_method>selfservice</distribution_method>
         <allow_downgrade>false</allow_downgrade>
         <patch_unknown>false</patch_unknown>

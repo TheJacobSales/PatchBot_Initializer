@@ -3,31 +3,30 @@
 <plist version="1.0">
 	<dict>
 		<key>Description</key>
-		<string>Move Opera package into testing</string>
+		<string>Move Microsoft Word package from testing to production</string>
 		<key>Identifier</key>
-		<string>local.ptch.Opera.FSLead</string>
+		<string>local.ptch.Microsoft Word.FSLead</string>
 		<key>Input</key>
-		<dict> </dict>
+		<dict>
+			<key>package</key>
+			<string>MicrosoftWord</string>
+		</dict>
 		<key>MinimumVersion</key>
-		<string>1.0.0</string>
+		<string>0.0.0</string>
 		<key>Process</key>
 		<array>
 			<dict>
 				<key>Arguments</key>
 				<dict>
-					<key>title</key>
-					<string>Install Latest Opera</string>
-					<key>patch</key>
-					<string>Opera</string>
 					<key>package</key>
-					<string>Opera</string>
-					<key>referencePolicy</key>
-					<string>Install Latest Opera</string>
+					<string>MicrosoftWord</string>
+					<key>patch</key>
+					<string>Microsoft Word 365/2019</string>
 					<key>delta</key>
-					<integer>-1</integer>
+					<integer>7</integer>
 				</dict>
 				<key>Processor</key>
-				<string>com.honestpuck.PatchBot/PatchManager</string>
+				<string>com.honestpuck.PatchBot/Production</string>
 			</dict>
 		</array>
 	</dict>
