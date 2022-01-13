@@ -30,7 +30,10 @@ def makePatchPolicy(appName, patchName,patchID, jamfURL, headers):
     root[3].text = f"{patchID}" 
 
     ###
-    xmlstr = ET.tostring(root, encoding='utf8', method='xml')
+    xmlstr = ET.tostring(root, encoding='unicode', method='xml')
+    print(xmlstr)
+    xmlstr = xmlstr.replace("\n","")
+    xmlstr = xmlstr.replace(" ","")
     print(xmlstr)
     postURL = f"{jamfURL}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
     response = requests.post(url=postURL, headers=headers, data=xmlstr)
@@ -44,10 +47,13 @@ def main():
 
     requestToken = jamfCerts(configData["jamfCerts"])
 
-    jamfUrl = "https://casper.ts.fresnostate.edu"
+    jamfUrl = configData["jamfURL"]
     getHeader = {
             'Authorization': f'Basic {requestToken["jamfClassic"]}',
             'Accept': 'application/json'
+    }
+    postHeader = {
+            'Authorization': f'Basic {requestToken["jamfClassic"]}',
     }
     allPoliciesURL = f"{jamfUrl}/JSSResource/policies"
 
@@ -107,7 +113,12 @@ def main():
     patchPolicies = response.json()
     print(patchPolicies)
 
-    # response = requests.post(url=patchPoliciesURL, headers=getHeader)
+    patchPolicyID = patchPolicies['patch policies'][0]['id']
+    patchPoliciesIDURL = f"{jamfUrl}/JSSResource/patchpolicies/id/{patchPolicyID}"
+    print(patchPoliciesURL)
+    response = requests.get(url=patchPoliciesIDURL, headers=getHeader)
+    print(response.status_code)
+
     testExist = False
     stableExist = False
     for policy in patchPolicies['patch policies']:
@@ -120,10 +131,10 @@ def main():
     
     if testExist != True:
         print("Creating Test Policy")
-        makePatchPolicy(appName=appName, patchName=f"{patchName} Test", patchID=patchID, jamfURL=jamfUrl, headers=getHeader)
+        makePatchPolicy(appName=appName, patchName=f"{patchName} Test", patchID=patchID, jamfURL=jamfUrl, headers=postHeader)
     if stableExist != True:
         print("Creating Stable Policy")
-        makePatchPolicy(appName=appName, patchName=f"{patchName} Stable", patchID=patchID, jamfURL=jamfUrl, headers=getHeader)
+        makePatchPolicy(appName=appName, patchName=f"{patchName} Stable", patchID=patchID, jamfURL=jamfUrl, headers=postHeader)
     
     #----------------------- Create Parent Patch and Parent Prod Recipe----------------
     tree = ET.parse('patchTemp.xml')

@@ -19,6 +19,8 @@
 					<string>Install Latest Edit</string>
 					<key>patch</key>
 					<string>Edit</string>
+					<key>distributionMethod</key>
+					<string>prompt</string>
 					<key>package</key>
 					<string>Edit</string>
 					<key>referencePolicy</key>
