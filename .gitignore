@@ -1,6 +1,9 @@
 # Config settings
 config.json
 
+#Recipies
+*.recipe
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

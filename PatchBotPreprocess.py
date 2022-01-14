@@ -132,10 +132,6 @@ def main():
     #     print(f"Cound not find patch with name: {patchName}\nPlease create the patch or confirm it's correct name before retrying script")
     #     raise SystemExit
     
-    #----------------------- Find Name of the Package -------------------------
-    # pkgName = input("Please enter in the name of the package used in the patch created(Eg. GoogleDrive, Opera): ")
-    # pkgName = str(pkgName)
-
     # ----------------------- Find a definition with a Package -------------------------
     pstDetailUrl = f"{jamfUrl}/JSSResource/patchsoftwaretitles/id/{patchID}"
     getXmlHeader = {
@@ -155,6 +151,19 @@ def main():
             break
     print(definitionVersion)
     print(packageFullName)
+    #----------------------- Find Name of the Package -------------------------
+    newPackageName = packageFullName[:packageFullName.index(definitionVersion)-1]
+    print(newPackageName)
+    userInput = input("Is this the name of your package? Enter \"y\" or \"n\": ")
+    if userInput.upper() == "Y":
+        print(f"Continuing with package name {userInput}")
+        pkgName = newPackageName
+    else:
+        pkgName = input("Please enter the name of the package using the file format.(eg. GoogleChrome-Universal, googlDrive): ")
+        while not pkgName:
+            pkgName = input("Please enter a valid name for package.(eg. GoogleChrome-Universal, googlDrive): ")
+            
+    pkgName = str(pkgName)
 
     #----------------------- Create Patch Policy Test and Stable ----------------
     patchPoliciesURL = f"{jamfUrl}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
@@ -179,6 +188,9 @@ def main():
             # Stable Policy Exists
             stableExist = True
     
+    testDM = ""
+    stableDM = ""
+
     if not testExist:
         print("Creating Test Policy")
         distributionMethod = input("Would you like the Distribution method to be automatic (Y or N): ")
@@ -186,6 +198,7 @@ def main():
             distributionMethod = "prompt"
         else:
             distributionMethod = "selfservice"
+        testDM = distributionMethod
         gracePeriod = input("How long do you want the grace period to be?: ")
         makePatchPolicy(appName=appName, policyName=f"{patchName} Test", distributionMethod=distributionMethod,
                         gracePeriod=gracePeriod, patchID=patchID, definitionVersion=definitionVersion, jamfURL=jamfUrl,
@@ -197,12 +210,14 @@ def main():
             distributionMethod = "prompt"
         else:
             distributionMethod = "selfservice"
+        stableDM = distributionMethod
         gracePeriod = input("How long do you want the grace period to be?: ")
         makePatchPolicy(appName=appName, policyName=f"{patchName} Stable", distributionMethod=distributionMethod,
                         gracePeriod=gracePeriod, patchID=patchID, definitionVersion=definitionVersion, jamfURL=jamfUrl,
                         headers=postHeader)
-    exit()
     # ----------------------- Create Parent Patch and Parent Prod Recipe----------------
+    testDM = "selfservice" if not testDM else testDM
+    stableDM = "selfservice" if not testDM else testDM
     tree = ET.parse('patchTemp.xml')
     root = tree.getroot()
     # Edit XML Here
@@ -210,9 +225,10 @@ def main():
     root[0][3].text = f"local.ptch.{appName}.FSLead"
     root[0][9][0][1][1].text = f"Install Latest {appName}"
     root[0][9][0][1][3].text = f"{patchName}"
-    root[0][9][0][1][5].text = f"{pkgName}"
-    root[0][9][0][1][7].text = f"Install Latest {appName}"
-    root[0][9][0][1][9].text = f"-1"
+    root[0][9][0][1][5].text = f"{testDM}"
+    root[0][9][0][1][7].text = f"{pkgName}"
+    root[0][9][0][1][9].text = f"Install Latest {appName}"
+    root[0][9][0][1][11].text = f"-1"
 
     with open(f'FSLead.{pkgName}.ptch.recipe', 'wb') as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
@@ -226,7 +242,8 @@ def main():
     root[0][5][1].text = f"{pkgName}"
     root[0][9][0][1][1].text = f"{pkgName}"
     root[0][9][0][1][3].text = f"{patchName}"
-    root[0][9][0][1][5].text = f"7"
+    root[0][9][0][1][5].text = f"{stableDM}"
+    root[0][9][0][1][7].text = f"7"
 
     with open(f'FSLead.{pkgName}.prod.recipe', 'wb') as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')

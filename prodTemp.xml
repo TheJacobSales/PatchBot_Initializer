@@ -22,6 +22,8 @@
 					<string>Edit</string>
 					<key>patch</key>
 					<string>Edit</string>
+					<key>distributionMethod</key>
+					<string>Edit</string>
 					<key>delta</key>
 					<integer>7</integer>
 				</dict>
