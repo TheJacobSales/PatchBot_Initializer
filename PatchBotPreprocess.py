@@ -4,7 +4,6 @@ import json
 import base64
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-
 from requests.api import get
 
 def authEncrypt(jamfAuthCerts):
@@ -18,26 +17,37 @@ def jamfCerts(jamfAuthCerts):
     return {"jamfClassic": encodedCerts,
         "jamfProToken": "xxxxxxxxxx"}
 
-def makePatchPolicy(appName, patchName,patchID, jamfURL, headers):
+def makePatchPolicy(appName, policyName, distributionMethod, gracePeriod, patchID, definitionVersion, jamfURL, headers):
     #Create a Patch Policy asociated to the patch ID
-    tree = ET.parse('patchPolicy.xml')
-    root = tree.getroot()
+    if distributionMethod == "prompt":
+        tree = ET.parse("ppPromptTemplate.xml")
+        root = tree.getroot()
+    else:
+        tree = ET.parse("ppSelfServiceTemplate.xml")
+        root = tree.getroot()
+        ### Edit XML Here
+        root.find("user_interaction/self_service_description").text = f"Uptdate {appName}"
+        root.find("user_interaction/notifications/notification_subject").text = "Update Available"
+        root.find("user_interaction/notifications/notification_message").text = f"{appName} Update Installing"
     ### Edit XML Here
-    root[0][0].text = f"{patchName}"
-    root[2][1].text = f"Update {appName}"
-    root[2][2][2].text = f"{appName} Update Available"
-    root[2][2][3].text = f"{patchName}"
-    root[3].text = f"{patchID}" 
+    root.find("general/name").text = str(policyName)
+    root.find("software_title_configuration_id").text = patchID
+    root.find("general/target_version").text = definitionVersion
+    root.find("user_interaction/grace_period/grace_period_duration").text = gracePeriod
 
     ###
     xmlstr = ET.tostring(root, encoding='unicode', method='xml')
-    print(xmlstr)
+    # print(xmlstr)
     xmlstr = xmlstr.replace("\n","")
-    xmlstr = xmlstr.replace(" ","")
-    print(xmlstr)
+    # xmlstr = xmlstr.replace(" ","")
+    # print(xmlstr)
     postURL = f"{jamfURL}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
     response = requests.post(url=postURL, headers=headers, data=xmlstr)
-    print(f"{patchName} policy finished with status: {response.status_code}")
+    if response.status_code == 201:
+        print(f"{policyName} policy was created successfully. This Policy was created with no "
+              f"scope and disabled. When ready go and set a scope and then enable policy.")
+    else:
+        print(f"{policyName} policy failed to create with error code: {response.status_code}")
     return
 
 def main():
@@ -81,11 +91,11 @@ def main():
         print(f"Cound not find policy with names: {policyNameInstall} or {policyNameTEST}\nPolicy probably not created.")
         raise SystemExit
 
-    #----------------------- Check of Patch was Created -------------------------
+    #----------------------- Check if Patch was Created -------------------------
     policyIDURL = f"{jamfUrl}/JSSResource/policies/id/{policyID}"
 
-    patchName = input("Please enter in the patch name used in the patch created(Eg. GoogleDrive, Google Chrome): ")
-    patchName = str(patchName)
+    print(f"Testing for Patch software title {appName}")
+    patchName = appName
 
     allPatchesURL = f"{jamfUrl}/JSSResource/patchsoftwaretitles"
     responce = requests.get(url=allPatchesURL, headers=getHeader)
@@ -94,17 +104,57 @@ def main():
 
     for patch in softwareTitles["patch_software_titles"]:
         if patchName == patch["name"]:
-            patchID = patch["id"]
+            patchID = str(patch["id"])
             print(f"Found {patchName} with patch ID of {patchID}")
             foundPatch = True
             break
     if foundPatch == False:
         print(f"Cound not find patch with name: {patchName}\nPlease create the patch or confirm it's correct name before retrying script")
         raise SystemExit
+
+    # policyIDURL = f"{jamfUrl}/JSSResource/policies/id/{policyID}"
+    #
+    # patchName = input("Please enter in the patch name used in the patch created(Eg. GoogleDrive, Google Chrome): ")
+    # patchName = str(patchName)
+    #
+    # allPatchesURL = f"{jamfUrl}/JSSResource/patchsoftwaretitles"
+    # response = requests.get(url=allPatchesURL, headers=getHeader)
+    # softwareTitles = response.json()
+    # foundPatch = False
+    #
+    # for patch in softwareTitles["patch_software_titles"]:
+    #     if patchName == patch["name"]:
+    #         patchID = patch["id"]
+    #         print(f"Found {patchName} with patch ID of {patchID}")
+    #         foundPatch = True
+    #         break
+    # if foundPatch == False:
+    #     print(f"Cound not find patch with name: {patchName}\nPlease create the patch or confirm it's correct name before retrying script")
+    #     raise SystemExit
     
     #----------------------- Find Name of the Package -------------------------
-    pkgName = input("Please enter in the name of the package used in the patch created(Eg. GoogleDrive, Opera): ")
-    pkgName = str(pkgName)
+    # pkgName = input("Please enter in the name of the package used in the patch created(Eg. GoogleDrive, Opera): ")
+    # pkgName = str(pkgName)
+
+    # ----------------------- Find a definition with a Package -------------------------
+    pstDetailUrl = f"{jamfUrl}/JSSResource/patchsoftwaretitles/id/{patchID}"
+    getXmlHeader = {
+            'Authorization': f'Basic {requestToken["jamfClassic"]}'
+    }
+    response = requests.get(url=pstDetailUrl, headers=getXmlHeader)
+    pstDetail = response.text
+    tree = ET.fromstring(pstDetail)
+    for version in tree.iter('version'):
+        try:
+            version.find("package/name").text
+            definitionVersion = version.find("software_version").text
+            packageFullName = version.find("package/name").text
+        except AttributeError:
+            print("this definition does not have a package ")
+        if definitionVersion != None:
+            break
+    print(definitionVersion)
+    print(packageFullName)
 
     #----------------------- Create Patch Policy Test and Stable ----------------
     patchPoliciesURL = f"{jamfUrl}/JSSResource/patchpolicies/softwaretitleconfig/id/{patchID}"
@@ -123,23 +173,39 @@ def main():
     stableExist = False
     for policy in patchPolicies['patch policies']:
         if policy['name'] == f"{patchName} Test":
-            #Test Policy Exists
+            # Test Policy Exists
             testExist = True
         elif policy['name'] == f"{patchName} Stable":
-            #Stable Policy Exists
+            # Stable Policy Exists
             stableExist = True
     
-    if testExist != True:
+    if not testExist:
         print("Creating Test Policy")
-        makePatchPolicy(appName=appName, patchName=f"{patchName} Test", patchID=patchID, jamfURL=jamfUrl, headers=postHeader)
-    if stableExist != True:
+        distributionMethod = input("Would you like the Distribution method to be automatic (Y or N): ")
+        if distributionMethod.upper() == "Y":
+            distributionMethod = "prompt"
+        else:
+            distributionMethod = "selfservice"
+        gracePeriod = input("How long do you want the grace period to be?: ")
+        makePatchPolicy(appName=appName, policyName=f"{patchName} Test", distributionMethod=distributionMethod,
+                        gracePeriod=gracePeriod, patchID=patchID, definitionVersion=definitionVersion, jamfURL=jamfUrl,
+                        headers=postHeader)
+    if not stableExist:
         print("Creating Stable Policy")
-        makePatchPolicy(appName=appName, patchName=f"{patchName} Stable", patchID=patchID, jamfURL=jamfUrl, headers=postHeader)
-    
-    #----------------------- Create Parent Patch and Parent Prod Recipe----------------
+        distributionMethod = input("Would you like the Distribution method to be automatic (Y or N): ")
+        if distributionMethod.upper() == "Y":
+            distributionMethod = "prompt"
+        else:
+            distributionMethod = "selfservice"
+        gracePeriod = input("How long do you want the grace period to be?: ")
+        makePatchPolicy(appName=appName, policyName=f"{patchName} Stable", distributionMethod=distributionMethod,
+                        gracePeriod=gracePeriod, patchID=patchID, definitionVersion=definitionVersion, jamfURL=jamfUrl,
+                        headers=postHeader)
+    exit()
+    # ----------------------- Create Parent Patch and Parent Prod Recipe----------------
     tree = ET.parse('patchTemp.xml')
     root = tree.getroot()
-    ### Edit XML Here
+    # Edit XML Here
     root[0][1].text = f"Move {appName} package into testing"
     root[0][3].text = f"local.ptch.{appName}.FSLead"
     root[0][9][0][1][1].text = f"Install Latest {appName}"
@@ -154,7 +220,7 @@ def main():
 
     tree = ET.parse('prodTemp.xml')
     root = tree.getroot()
-    ### Edit XML Here
+    # Edit XML Here
     root[0][1].text = f"Move {appName} package from testing to production"
     root[0][3].text = f"local.ptch.{appName}.FSLead"
     root[0][5][1].text = f"{pkgName}"
@@ -165,7 +231,8 @@ def main():
     with open(f'FSLead.{pkgName}.prod.recipe', 'wb') as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
         tree.write(f, encoding='utf-8')
-    #----------------------- Create Create Overides ----------------    
+    # ----------------------- Create Create Overides ----------------
+
 
 if __name__ == "__main__":
     main()

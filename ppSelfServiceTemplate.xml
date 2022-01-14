@@ -2,11 +2,11 @@
     <general>
         <id></id>
         <name>Edit</name>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
         <target_version></target_version>
         <release_date></release_date>
         <incremental_updates>false</incremental_updates>
-        <reboot>true</reboot>
+        <reboot>false</reboot>
         <minimum_os></minimum_os>
         <kill_apps>
             <kill_app>
@@ -16,7 +16,7 @@
         </kill_apps>
         <distribution_method>selfservice</distribution_method>
         <allow_downgrade>false</allow_downgrade>
-        <patch_unknown>false</patch_unknown>
+        <patch_unknown>true</patch_unknown>
     </general>
     <scope>
         <all_computers>false</all_computers>
